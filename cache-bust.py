@@ -6,7 +6,8 @@ changing its URL leaves returning visitors on the old version. This script adds
 ?v=<content-hash> to local CSS, JS, image, and font URLs. Changed files get a
 new URL; unchanged files keep their cache.
 
-Handles href/src attributes, srcset attributes, and url(...) references in CSS.
+Handles href/src/poster attributes, asset data-* attributes, srcset attributes,
+url(...) references in CSS, and icon src paths in .webmanifest files.
 
 Usage: cache-bust.py [DIR]    (default: dist)
 """
@@ -37,10 +38,12 @@ ASSET_EXTENSIONS = {
 }
 
 CSS_URL_RE = re.compile(r"url\((?P<quote>[\"']?)(?P<url>[^\"')]+)(?P=quote)\)")
+ASSET_ATTR = r"(?:href|src|poster|data-[\w-]+)"
 HTML_URL_RE = re.compile(
-    r"(?P<attr>\b(?:href|src)=[\"'])(?P<url>[^\"']+)(?P<end>[\"'])"
+    rf"(?P<attr>\b{ASSET_ATTR}=[\"'])(?P<url>[^\"']+)(?P<end>[\"'])"
 )
 SRCSET_RE = re.compile(r"(?P<attr>\bsrcset=[\"'])(?P<value>[^\"']+)(?P<end>[\"'])")
+MANIFEST_SRC_RE = re.compile(r'(?P<attr>"src"\s*:\s*")(?P<url>[^"]+)(?P<end>")')
 
 _hashes = {}
 
@@ -94,6 +97,19 @@ def version_srcset(value, base, root):
     return ", ".join(candidates)
 
 
+def version_manifest_urls(manifest_path, root):
+    text = manifest_path.read_text()
+
+    def replace(match):
+        return (
+            f'{match.group("attr")}'
+            f"{version_url(match.group('url'), manifest_path.parent, root)}"
+            f'{match.group("end")}'
+        )
+
+    manifest_path.write_text(MANIFEST_SRC_RE.sub(replace, text))
+
+
 def version_css_urls(css_path, root):
     text = css_path.read_text()
 
@@ -132,6 +148,9 @@ def main():
 
     for css_path in sorted(root.rglob("*.css")):
         version_css_urls(css_path, root)
+
+    for manifest_path in sorted(root.rglob("*.webmanifest")):
+        version_manifest_urls(manifest_path, root)
 
     html_files = sorted(root.rglob("*.html"))
     for html_path in html_files:

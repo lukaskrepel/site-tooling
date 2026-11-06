@@ -65,8 +65,9 @@ PORT=8080 _shared/serve.sh dist
 ## Cache busting
 
 `cache-bust.py` appends `?v=<content-hash>` to local CSS, JS, image, and font
-URLs in a build directory. It also rewrites `url(...)` references in CSS and
-`srcset` attributes in HTML. Run it after the build, before deploying:
+URLs in a build directory. It handles `href`, `src`, `poster`, asset `data-*`
+attributes, and `srcset` in HTML, `url(...)` references in CSS, and icon paths
+in `.webmanifest` files. Run it after the build, before deploying:
 
 ```bash
 python3 _shared/cache-bust.py dist

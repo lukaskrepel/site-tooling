@@ -12,6 +12,7 @@ FTP or SFTP host with `lftp`.
 - `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
 - `appshots.py` — composites raw screenshots into a phone border and writes
   WebP files.
+- `favicons.py` — generates a favicon and app-icon set from one source image.
 
 ## Configuration
 
@@ -212,6 +213,27 @@ cp .sync.env.example .sync.env   # .sync.env is gitignored
 `sync.sh` runs `git subtree pull` in each configured checkout. It never pushes;
 review and push the resulting commits when you are ready.
 
+## Favicons
+
+`favicons.py` turns one source image into the standard favicon and app-icon
+set. The artwork keeps its aspect ratio and is centred on a square canvas, so
+portrait or landscape sources work without distortion.
+
+```bash
+python3 favicons.py source/icon.png --out static/images
+python3 favicons.py source/icon.png --out static/favicons --background '#f7f1e7'
+```
+
+It writes `favicon-16x16.png`, `favicon-32x32.png`, `favicon.ico` (16, 32, 48,
+and 64 px), `apple-touch-icon.png`, `android-chrome-192x192.png`, and
+`android-chrome-512x512.png`.
+
+The tab icons keep a transparent background. The larger app icons use an opaque
+background (white by default) because iOS renders transparency as black. Set
+`--background transparent` to keep them transparent, adjust the app-icon margin
+with `--padding` (default `0.08`), or write only the tab icons with
+`--no-app-icons`.
+
 ## Vendoring
 
 `_shared/` is the local copy used by `./deploy.sh`; CI does not need it. Keep it
@@ -240,7 +262,7 @@ git subtree add --prefix _shared <tooling-repo-url> main --squash
 ## Requirements
 
 `bash` and `lftp`. Install `lftp` with `brew install lftp` on macOS or
-`apt-get install lftp` on Debian/Ubuntu. `appshots.py` also needs Pillow:
+`apt-get install lftp` on Debian/Ubuntu. `appshots.py` and `favicons.py` also need Pillow:
 `python3 -m pip install -r requirements.txt`.
 
 The password is passed to `lftp` through `LFTP_PASSWORD`, so it never appears in

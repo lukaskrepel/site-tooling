@@ -1,0 +1,57 @@
+name: Deploy static site
+description: Mirror a built directory to an FTP or SFTP host with lftp.
+
+inputs:
+  source:
+    description: Directory to mirror.
+    required: false
+    default: dist
+  protocol:
+    description: "ftp or sftp. Leave empty to infer it from the credentials."
+    required: false
+    default: ""
+  host:
+    description: FTP or SFTP host.
+    required: false
+    default: ""
+  user:
+    description: FTP or SFTP username.
+    required: false
+    default: ""
+  password:
+    description: FTP or SFTP password.
+    required: false
+    default: ""
+  path:
+    description: Remote directory to mirror into.
+    required: false
+    default: ""
+  port:
+    description: SFTP port (defaults to 22).
+    required: false
+    default: ""
+  lftp-options:
+    description: Extra lftp commands, one per line.
+    required: false
+    default: ""
+  skip-if-unconfigured:
+    description: Skip instead of failing when no credentials are provided at all.
+    required: false
+    default: "false"
+
+runs:
+  using: composite
+  steps:
+    - name: Mirror site
+      shell: bash
+      env:
+        DEPLOY_SOURCE: ${{ inputs.source }}
+        DEPLOY_PROTOCOL: ${{ inputs.protocol }}
+        DEPLOY_HOST: ${{ inputs.host }}
+        DEPLOY_USER: ${{ inputs.user }}
+        DEPLOY_PASS: ${{ inputs.password }}
+        DEPLOY_PATH: ${{ inputs.path }}
+        DEPLOY_PORT: ${{ inputs.port }}
+        DEPLOY_LFTP_OPTIONS: ${{ inputs['lftp-options'] }}
+        DEPLOY_SKIP_IF_UNCONFIGURED: ${{ inputs['skip-if-unconfigured'] }}
+      run: bash "$GITHUB_ACTION_PATH/deploy.sh"

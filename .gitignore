@@ -1,0 +1,5 @@
+# Local configuration — never commit these
+.env
+.env.*
+!.env.example
+.runs.env

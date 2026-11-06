@@ -6,6 +6,7 @@ FTP or SFTP host with `lftp`.
 - `deploy.sh` — loads `.env`, validates credentials, normalises permissions and
   mirrors a build directory.
 - `action.yml` — GitHub composite action that runs the same script in CI.
+- `runs.sh` — prints recent Actions runs for a configured set of repositories.
 
 ## Configuration
 
@@ -62,6 +63,30 @@ Add the credentials as repository secrets and call the vendored action:
 
 For SFTP, use the `SFTP_*` secrets and `protocol: sftp`. Optional inputs are
 `port`, `lftp-options`, and `skip-if-unconfigured`.
+
+## Run feed
+
+`runs.sh` prints recent GitHub Actions runs across several repositories.
+
+```bash
+cp .runs.env.example .runs.env   # .runs.env is gitignored
+# edit GH_OWNER and REPOS
+./runs.sh
+./runs.sh -n 10
+./runs.sh example.com example.org
+```
+
+`.runs.env` is read from the current directory or from next to `runs.sh`. It
+holds your account and repository list, so it never enters this public
+repository:
+
+```dotenv
+GH_OWNER=your-account
+REPOS="example.com example.org"
+```
+
+Entries in `REPOS` may be bare repository names or full `owner/repo` slugs.
+Requires `gh` with `gh auth login`.
 
 ## Vendoring
 

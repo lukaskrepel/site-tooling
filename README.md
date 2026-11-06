@@ -7,6 +7,7 @@ FTP or SFTP host with `lftp`.
   mirrors a build directory.
 - `action.yml` — GitHub composite action that runs the same script in CI.
 - `runs.sh` — prints recent Actions runs for a configured set of repositories.
+- `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
 
 ## Configuration
 
@@ -48,10 +49,12 @@ commands without uploading anything.
 
 ## CI usage
 
-Add the credentials as repository secrets and call the vendored action:
+Add the credentials as repository secrets and call this repository directly.
+Using `@main` means every deployment runs the latest tooling, with no vendored
+copy to keep in sync:
 
 ```yaml
-- uses: ./_shared
+- uses: your-account/site-tooling@main
   with:
     source: dist
     protocol: ftp
@@ -61,6 +64,7 @@ Add the credentials as repository secrets and call the vendored action:
     path: ${{ secrets.FTP_PATH }}
 ```
 
+Pin a tag or commit SHA instead of `main` if you prefer updates to be explicit.
 For SFTP, use the `SFTP_*` secrets and `protocol: sftp`. Optional inputs are
 `port`, `lftp-options`, and `skip-if-unconfigured`.
 
@@ -88,11 +92,25 @@ REPOS="example.com example.org"
 Entries in `REPOS` may be bare repository names or full `owner/repo` slugs.
 Requires `gh` with `gh auth login`.
 
+## Updating local copies
+
+CI runs this repository directly, so deployments never depend on a vendored
+copy. The `_shared/` directory is only for local `./deploy.sh` runs. Refresh the
+local copies with:
+
+```bash
+cp .sync.env.example .sync.env   # .sync.env is gitignored
+# edit TOOLING_REPO and SITE_DIRS
+./sync.sh
+```
+
+`sync.sh` runs `git subtree pull` in each configured checkout. It never pushes;
+review and push the resulting commits when you are ready.
+
 ## Vendoring
 
-Keep this repository in each site repository as `_shared/` with `git subtree`.
-Do not edit `_shared/` in a site repository; change this repository and pull the
-update down.
+`_shared/` is the local copy used by `./deploy.sh`; CI does not need it. Keep it
+tracked with `git subtree` and do not edit it inside a site repository.
 
 First time:
 

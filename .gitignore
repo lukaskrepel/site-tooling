@@ -3,3 +3,4 @@
 .env.*
 !.env.example
 .runs.env
+.sync.env

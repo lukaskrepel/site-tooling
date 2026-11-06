@@ -1,0 +1,2 @@
+# Only appshots.py needs this
+Pillow>=10

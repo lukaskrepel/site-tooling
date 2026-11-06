@@ -9,6 +9,8 @@ FTP or SFTP host with `lftp`.
 - `runs.sh` — prints recent Actions runs for a configured set of repositories.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
 - `serve.sh` — serves a build directory for local preview.
+- `appshots.py` — composites raw screenshots into a phone border and writes
+  WebP files.
 
 ## Configuration
 
@@ -57,6 +59,83 @@ _shared/serve.sh dist
 _shared/serve.sh dist 8080
 PORT=8080 _shared/serve.sh dist
 ```
+
+## App screenshots
+
+`appshots.py` composites raw screenshot captures into a phone-border image and
+exports WebP files. Keep raw captures in `source/app-screenshots/<app>/` and
+write the composited files into the published images folder, for example
+`static/images/apps/<app>/` or `images/apps/<app>/`:
+
+```bash
+python3 -m pip install -r requirements.txt
+python3 appshots.py \
+  --border source/phone_border.png \
+  --window 290,70,2386,1248 \
+  --out static/images/apps/my-app \
+  source/app-screenshots/my-app/*.png
+```
+
+`--window` is the screen rectangle inside the border (`x1,y1,x2,y2`). Files are
+named after the input stems, so use meaningful names such as `insects.png`,
+`bones.png`, and `menu.png`.
+
+Use the same three-up fan everywhere:
+
+```html
+<div class="app-screenshots">
+	<img
+		src="images/apps/my-app/one.webp"
+		alt=""
+		class="app-shot"
+		loading="lazy"
+	/>
+	<img
+		src="images/apps/my-app/two.webp"
+		alt=""
+		class="app-shot"
+		loading="lazy"
+	/>
+	<img
+		src="images/apps/my-app/menu.webp"
+		alt=""
+		class="app-shot app-shot-wide"
+		loading="lazy"
+	/>
+</div>
+```
+
+```css
+.app-screenshots {
+	position: relative;
+	max-width: 500px;
+	margin: 0 auto;
+}
+.app-shot {
+	width: auto;
+	max-width: 65%;
+	height: auto;
+	border-radius: 15px;
+	position: relative;
+	display: block;
+}
+.app-shot:first-child {
+	z-index: 1;
+}
+.app-shot:nth-child(2) {
+	max-width: 60%;
+	margin-left: auto;
+	margin-top: -120px;
+	z-index: 2;
+}
+.app-shot-wide {
+	max-width: 75%;
+	margin: -80px auto 0;
+	z-index: 3;
+}
+```
+
+Adjust the negative margins for the site's breakpoints.
 
 ## CI usage
 
@@ -146,7 +225,8 @@ git subtree add --prefix _shared <tooling-repo-url> main --squash
 ## Requirements
 
 `bash` and `lftp`. Install `lftp` with `brew install lftp` on macOS or
-`apt-get install lftp` on Debian/Ubuntu.
+`apt-get install lftp` on Debian/Ubuntu. `appshots.py` also needs Pillow:
+`python3 -m pip install -r requirements.txt`.
 
 The password is passed to `lftp` through `LFTP_PASSWORD`, so it never appears in
 the process list, on disk, or in a workflow log.

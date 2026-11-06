@@ -4,3 +4,7 @@
 !.env.example
 .runs.env
 .sync.env
+
+# Python
+__pycache__/
+*.pyc

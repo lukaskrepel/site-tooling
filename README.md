@@ -8,6 +8,7 @@ FTP or SFTP host with `lftp`.
 - `action.yml` — GitHub composite action that runs the same script in CI.
 - `runs.sh` — prints recent Actions runs for a configured set of repositories.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
+- `serve.sh` — serves a build directory for local preview.
 
 ## Configuration
 
@@ -46,6 +47,16 @@ _shared/deploy.sh dist --dry-run
 
 Start with `--dry-run` to print the resolved configuration and the `lftp`
 commands without uploading anything.
+
+## Preview
+
+`serve.sh` serves a build directory on `http://localhost:8000`:
+
+```bash
+_shared/serve.sh dist
+_shared/serve.sh dist 8080
+PORT=8080 _shared/serve.sh dist
+```
 
 ## CI usage
 

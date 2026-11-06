@@ -9,6 +9,7 @@ FTP or SFTP host with `lftp`.
 - `runs.sh` — prints recent Actions runs for a configured set of repositories.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
 - `serve.sh` — serves a build directory for local preview.
+- `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
 - `appshots.py` — composites raw screenshots into a phone border and writes
   WebP files.
 
@@ -59,6 +60,20 @@ _shared/serve.sh dist
 _shared/serve.sh dist 8080
 PORT=8080 _shared/serve.sh dist
 ```
+
+## Cache busting
+
+`cache-bust.py` appends `?v=<content-hash>` to local CSS, JS, image, and font
+URLs in a build directory. It also rewrites `url(...)` references in CSS and
+`srcset` attributes in HTML. Run it after the build, before deploying:
+
+```bash
+python3 _shared/cache-bust.py dist
+```
+
+The default directory is `dist`. Unchanged files keep their URL and their cache;
+changed files get a new URL. Serve HTML with `Cache-Control: no-cache` so
+browsers pick up new asset URLs immediately.
 
 ## App screenshots
 

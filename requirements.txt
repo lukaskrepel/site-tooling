@@ -1,2 +1,2 @@
-# Needed by appshots.py and favicons.py
+# Needed by appshots.py, favicons.py, and imgopt.py
 Pillow>=10

@@ -10,6 +10,7 @@ FTP or SFTP host with `lftp`.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
 - `serve.sh` — serves a build directory for local preview.
 - `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
+- `imgopt.py` — generates resized WebP/JPEG derivatives from JPG/PNG sources.
 - `appshots.py` — composites raw screenshots into a phone border and writes
   WebP files.
 - `favicons.py` — generates a favicon and app-icon set from one source image.
@@ -76,6 +77,46 @@ python3 _shared/cache-bust.py dist
 The default directory is `dist`. Unchanged files keep their URL and their cache;
 changed files get a new URL. Serve HTML with `Cache-Control: no-cache` so
 browsers pick up new asset URLs immediately.
+
+## Image optimisation
+
+`imgopt.py` reads raster sources (JPG/PNG) and writes resized, compressed WebP
+or JPEG files into a build directory. The source folder name and relative path
+are kept, so `--src static/images --out dist` writes `dist/images/...`.
+Reference mode only converts files the pages actually use:
+
+```bash
+python3 _shared/imgopt.py --src static/images --out dist \
+  --refs template.html static/styles.css
+```
+
+Explicit mode converts a folder, optionally filtered by glob:
+
+```bash
+python3 _shared/imgopt.py --src static/videos --out dist --match '*.jpg' \
+  --max-width 1280 --quality 80 --prune-source --cache .cache/imgopt
+```
+
+- `--max-width` downscales wider sources and never upscales.
+- `--widths 640,960` also writes `<name>-640.webp` and `<name>-960.webp` for
+  `srcset`; the base file keeps the plain name.
+- `--prune-source` deletes the original that the site build copied into the
+  output tree. Use it when only the derivative is published; leave it off when
+  a `<picture>` fallback still points at the original.
+- `--cache` reuses encoded files between builds, so a wiped `dist/` does not
+  re-encode every asset. Add the cache directory to the site's `.gitignore`.
+- Reference mode fails when a referenced asset has no matching source, which
+  catches typos in `template.html` and `styles.css`.
+
+Output is WebP at quality 82 by default. `--format jpeg` re-encodes to JPEG
+instead, with a white background for transparent areas. `--method 0-6` sets the
+WebP effort; the default of 4 is much faster than 6 for a marginal size
+difference.
+
+Hand-authored `.webp` files in a source folder are copied through unchanged.
+In GitHub Actions, install Pillow in the build job (`actions/setup-python`
+followed by `pip install -r _shared/requirements.txt`) before running the
+build script.
 
 ## App screenshots
 
@@ -263,8 +304,8 @@ git subtree add --prefix _shared <tooling-repo-url> main --squash
 ## Requirements
 
 `bash` and `lftp`. Install `lftp` with `brew install lftp` on macOS or
-`apt-get install lftp` on Debian/Ubuntu. `appshots.py` and `favicons.py` also need Pillow:
-`python3 -m pip install -r requirements.txt`.
+`apt-get install lftp` on Debian/Ubuntu. `appshots.py`, `favicons.py`, and
+`imgopt.py` also need Pillow: `python3 -m pip install -r requirements.txt`.
 
 The password is passed to `lftp` through `LFTP_PASSWORD`, so it never appears in
 the process list, on disk, or in a workflow log.

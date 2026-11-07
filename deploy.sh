@@ -229,6 +229,10 @@ else
 	append "open --env-password -u $(lftp_quote "$user") $(lftp_quote "$host")"
 fi
 append "mirror --reverse --delete --verbose --ignore-time --parallel=4 $(lftp_quote "$src/") $(lftp_quote "$remote_path/")"
+# --ignore-time leaves size as the only comparison, so an edit that keeps the
+# same byte length (for example a capitalisation fix) would be skipped. Force
+# the small text assets up on every deploy; media stays size-compared.
+append "mirror --reverse --verbose --ignore-time --ignore-size --parallel=4 --include-glob='*.html' --include-glob='*.css' --include-glob='*.js' --include-glob='*.json' --include-glob='*.webmanifest' --include-glob='*.xml' --include-glob='*.txt' --include-glob='*.svg' --include-glob='*.ico' --include-glob='.htaccess' $(lftp_quote "$src/") $(lftp_quote "$remote_path/")"
 
 if [ "$dry_run" = "1" ]; then
 	printf 'protocol: %s\n' "$protocol"

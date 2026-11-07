@@ -53,6 +53,11 @@ _shared/deploy.sh dist --dry-run
 Start with `--dry-run` to print the resolved configuration and the `lftp`
 commands without uploading anything.
 
+The mirror compares file sizes because FTP timestamps are unreliable, then
+re-uploads HTML, CSS, JS, and other small text assets on every deploy so an
+edit that keeps the same byte length is not skipped. Media files are only
+uploaded when their size changes.
+
 ## Preview
 
 `serve.sh` serves a build directory on `http://localhost:8000`:

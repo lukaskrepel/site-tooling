@@ -47,6 +47,7 @@ Protocol is inferred from which variables are set: `SFTP_HOST` selects SFTP and
 _shared/deploy.sh dist
 _shared/deploy.sh public --protocol ftp
 _shared/deploy.sh dist --lftp-option 'set net:timeout 30'
+_shared/deploy.sh dist --exclude 'share/'   # leave remote share/ alone
 _shared/deploy.sh dist --dry-run
 ```
 
@@ -219,7 +220,7 @@ copy to keep in sync:
 
 Pin a tag or commit SHA instead of `main` if you prefer updates to be explicit.
 For SFTP, use the `SFTP_*` secrets and `protocol: sftp`. Optional inputs are
-`port`, `lftp-options`, and `skip-if-unconfigured`.
+`port`, `lftp-options`, `exclude`, and `skip-if-unconfigured`.
 
 ## Run feed
 

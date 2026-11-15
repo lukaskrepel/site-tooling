@@ -34,6 +34,10 @@ inputs:
     description: Extra lftp commands, one per line.
     required: false
     default: ""
+  exclude:
+    description: Remote globs to leave alone (not uploaded or deleted), one per line.
+    required: false
+    default: ""
   skip-if-unconfigured:
     description: Skip instead of failing when no credentials are provided at all.
     required: false
@@ -53,5 +57,6 @@ runs:
         DEPLOY_PATH: ${{ inputs.path }}
         DEPLOY_PORT: ${{ inputs.port }}
         DEPLOY_LFTP_OPTIONS: ${{ inputs['lftp-options'] }}
+        DEPLOY_EXCLUDE: ${{ inputs.exclude }}
         DEPLOY_SKIP_IF_UNCONFIGURED: ${{ inputs['skip-if-unconfigured'] }}
       run: bash "$GITHUB_ACTION_PATH/deploy.sh"

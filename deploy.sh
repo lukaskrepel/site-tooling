@@ -6,6 +6,7 @@
 #   --protocol ftp|sftp       Override protocol auto-detection
 #   --port PORT               SFTP port (default: 22)
 #   --lftp-option 'COMMAND'   Extra lftp command, repeatable
+#   --exclude GLOB            Remote path to leave alone (not uploaded or deleted), repeatable
 #   --dry-run                 Print the resolved deployment and exit
 #   -h, --help                Show this help
 #
@@ -20,6 +21,7 @@
 #   DEPLOY_SOURCE               Source directory (default: dist)
 #   DEPLOY_PROTOCOL             ftp or sftp (default: auto-detect)
 #   DEPLOY_LFTP_OPTIONS         Extra lftp commands, one per line
+#   DEPLOY_EXCLUDE              Globs to leave alone on the remote, one per line
 #   DEPLOY_SKIP_IF_UNCONFIGURED Skip when no credentials are set at all
 #
 # The password is passed to lftp through LFTP_PASSWORD, so it never appears in
@@ -40,6 +42,7 @@ Usage: deploy.sh [SOURCE_DIR] [options]
   --protocol ftp|sftp       Override protocol auto-detection
   --port PORT               SFTP port (default: 22)
   --lftp-option 'COMMAND'   Extra lftp command, repeatable
+  --exclude GLOB            Remote path to leave alone (not uploaded or deleted), repeatable
   --dry-run                 Print the resolved deployment and exit
   -h, --help                Show this help
 
@@ -54,6 +57,7 @@ Other settings:
   DEPLOY_SOURCE               Source directory (default: dist)
   DEPLOY_PROTOCOL             ftp or sftp (default: auto-detect)
   DEPLOY_LFTP_OPTIONS         Extra lftp commands, one per line
+  DEPLOY_EXCLUDE              Globs to leave alone on the remote, one per line
   DEPLOY_SKIP_IF_UNCONFIGURED Skip when no credentials are set at all
 EOF
 }
@@ -81,6 +85,7 @@ src=""
 protocol="${DEPLOY_PROTOCOL:-}"
 port="${DEPLOY_PORT:-}"
 extra=()
+excludes=()
 dry_run=0
 skip_unconfigured="${DEPLOY_SKIP_IF_UNCONFIGURED:-0}"
 
@@ -99,6 +104,11 @@ while [ $# -gt 0 ]; do
 	--lftp-option)
 		[ $# -ge 2 ] || die "--lftp-option needs a value"
 		extra+=("$2")
+		shift 2
+		;;
+	--exclude)
+		[ $# -ge 2 ] || die "--exclude needs a value"
+		excludes+=("$2")
 		shift 2
 		;;
 	--dry-run)
@@ -126,6 +136,14 @@ if [ -n "${DEPLOY_LFTP_OPTIONS:-}" ]; then
 			extra+=("$line")
 		fi
 	done <<<"$DEPLOY_LFTP_OPTIONS"
+fi
+
+if [ -n "${DEPLOY_EXCLUDE:-}" ]; then
+	while IFS= read -r line; do
+		if [ -n "$line" ]; then
+			excludes+=("$line")
+		fi
+	done <<<"$DEPLOY_EXCLUDE"
 fi
 
 case "$skip_unconfigured" in
@@ -205,6 +223,15 @@ if [ "$dry_run" = "0" ] && ! command -v lftp >/dev/null 2>&1; then
 	die "lftp is required — install it with: brew install lftp (macOS) or apt-get install lftp"
 fi
 
+# mirror --delete never touches excluded paths, so other uploads under the
+# remote root (for example a share/ folder) survive the deploy.
+exclude_args=""
+if [ ${#excludes[@]} -gt 0 ]; then
+	for glob in "${excludes[@]}"; do
+		exclude_args="$exclude_args --exclude-glob=$(lftp_quote "$glob")"
+	done
+fi
+
 commands=""
 append() {
 	if [ -z "$commands" ]; then
@@ -228,11 +255,11 @@ if [ "$protocol" = "sftp" ]; then
 else
 	append "open --env-password -u $(lftp_quote "$user") $(lftp_quote "$host")"
 fi
-append "mirror --reverse --delete --verbose --ignore-time --parallel=4 $(lftp_quote "$src/") $(lftp_quote "$remote_path/")"
+append "mirror --reverse --delete --verbose --ignore-time --parallel=4$exclude_args $(lftp_quote "$src/") $(lftp_quote "$remote_path/")"
 # --ignore-time leaves size as the only comparison, so an edit that keeps the
 # same byte length (for example a capitalisation fix) would be skipped. Force
 # the small text assets up on every deploy; media stays size-compared.
-append "mirror --reverse --verbose --transfer-all --parallel=4 --include-glob='*.html' --include-glob='*.css' --include-glob='*.js' --include-glob='*.json' --include-glob='*.webmanifest' --include-glob='*.xml' --include-glob='*.txt' --include-glob='*.svg' --include-glob='*.ico' --include-glob='.htaccess' $(lftp_quote "$src/") $(lftp_quote "$remote_path/")"
+append "mirror --reverse --verbose --transfer-all --parallel=4 --include-glob='*.html' --include-glob='*.css' --include-glob='*.js' --include-glob='*.json' --include-glob='*.webmanifest' --include-glob='*.xml' --include-glob='*.txt' --include-glob='*.svg' --include-glob='*.ico' --include-glob='.htaccess'$exclude_args $(lftp_quote "$src/") $(lftp_quote "$remote_path/")"
 
 if [ "$dry_run" = "1" ]; then
 	printf 'protocol: %s\n' "$protocol"

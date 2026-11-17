@@ -54,11 +54,12 @@ The 2× rule keeps images sharp on high-density screens. Sources wider than
 
 ## App screenshots
 
-`appshots.py` pastes raw captures into a phone-border image.
+`appshots.py` pastes raw captures into the shared phone border,
+`phone-border.png` in this repository (2674×1316, transparent screen window at
+290,70–2386,1248). Sites don't keep their own copy.
 
 | File                                   | Size                                              | Format |
 | -------------------------------------- | ------------------------------------------------- | ------ |
-| `source/phone_border.png`              | 2674×1316, transparent screen window at 290,70–2386,1248 | PNG |
 | `source/app-screenshots/<app>/*.png`   | raw captures at the app's own resolution, 16:9 landscape (e.g. 2400×1350) | PNG |
 
 Captures are scaled to fit the 2096×1178 window, so anything 16:9 and at least

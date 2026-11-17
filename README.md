@@ -11,7 +11,8 @@ FTP or SFTP host with `lftp`.
 - `serve.sh` — serves a build directory for local preview.
 - `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
 - `imgopt.py` — generates resized WebP/JPEG derivatives from JPG/PNG sources.
-- `appshots.py` — composites raw screenshots into a phone border and writes
+- `appshots.py` — composites raw screenshots into the shared phone border
+  (`phone-border.png`) and writes
   WebP files.
 - `favicons.py` — generates a favicon and app-icon set from one source image.
 - `ogimage.py` — generates a 1200×630 social share image from a logo or still.
@@ -130,23 +131,24 @@ build script.
 
 ## App screenshots
 
-`appshots.py` composites raw screenshot captures into a phone-border image and
-exports WebP files. Keep raw captures in `source/app-screenshots/<app>/` and
+`appshots.py` composites raw screenshot captures into the shared phone border
+and exports WebP files. Every site uses the same border, `phone-border.png` in
+this repository (so `_shared/phone-border.png` in a site); do not keep a copy in
+a site's `source/`. Keep raw captures in `source/app-screenshots/<app>/` and
 write the composited files into the published images folder, for example
-`static/images/apps/<app>/` or `images/apps/<app>/`:
+`static/images/apps/<app>/`:
 
 ```bash
 python3 -m pip install -r requirements.txt
-python3 appshots.py \
-  --border source/phone_border.png \
-  --window 290,70,2386,1248 \
+python3 _shared/appshots.py \
   --out static/images/apps/my-app \
   source/app-screenshots/my-app/*.png
 ```
 
-`--window` is the screen rectangle inside the border (`x1,y1,x2,y2`). Files are
-named after the input stems, so use meaningful names such as `insects.png`,
-`bones.png`, and `menu.png`.
+The border's screen window is built in (`290,70,2386,1248`). `--border` and
+`--window` exist only to try out a different frame; change the shared file
+instead so every site stays the same. Files are named after the input stems,
+so use meaningful names such as `insects.png`, `bones.png`, and `menu.png`.
 
 Use the same three-up fan everywhere:
 

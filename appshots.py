@@ -5,14 +5,14 @@ Keep raw captures in a source folder such as `source/app-screenshots/<app>/`
 and write the composited files into the published images folder, for example
 `static/images/apps/<app>/` or `images/apps/<app>/`.
 
-Usage:
-    appshots.py --border source/phone_border.png \
-        --window 290,70,2386,1248 \
-        --out static/images/apps/my-app \
+Every site uses the same phone border, phone-border.png next to this script,
+so normally only the output folder and the captures are needed:
+
+    appshots.py --out static/images/apps/my-app \
         source/app-screenshots/my-app/*.png
 
-The window is the rectangle inside the border that holds the screen, given as
-x1,y1,x2,y2. Files are named after the input stems, so keep the input names
+--border and --window override the shared border and its screen rectangle
+(x1,y1,x2,y2). Files are named after the input stems, so keep the input names
 meaningful (`insects.png`, `bones.png`, `menu.png`).
 """
 
@@ -21,6 +21,10 @@ from __future__ import annotations
 import argparse
 import sys
 from pathlib import Path
+
+# The shared border and the screen rectangle inside it.
+DEFAULT_BORDER = Path(__file__).resolve().parent / "phone-border.png"
+DEFAULT_WINDOW = (290, 70, 2386, 1248)
 
 try:
     from PIL import Image, ImageOps
@@ -49,12 +53,18 @@ def main() -> int:
     parser = argparse.ArgumentParser(
         description="Composite screenshots into a phone border and export WebP."
     )
-    parser.add_argument("--border", required=True, help="phone border PNG")
+    parser.add_argument(
+        "--border",
+        type=Path,
+        default=DEFAULT_BORDER,
+        help="phone border PNG (default: the shared phone-border.png)",
+    )
     parser.add_argument(
         "--window",
-        required=True,
         type=parse_window,
-        help="screen rectangle inside the border: x1,y1,x2,y2",
+        default=DEFAULT_WINDOW,
+        help="screen rectangle inside the border: x1,y1,x2,y2 "
+        "(default: %s)" % ",".join(map(str, DEFAULT_WINDOW)),
     )
     parser.add_argument("--out", required=True, help="output directory")
     parser.add_argument(

@@ -16,6 +16,9 @@ FTP or SFTP host with `lftp`.
 - `favicons.py` — generates a favicon and app-icon set from one source image.
 - `ogimage.py` — generates a 1200×630 social share image from a logo or still.
 
+See [ASSETS.md](ASSETS.md) for the source files each site needs, with sizes
+and formats.
+
 ## Configuration
 
 Credentials are read from the environment or from `.env` in the current working
@@ -301,7 +304,8 @@ The default size is 1200×630; `--size 1200x675` keeps a 16:9 artwork intact.
 ## Icons and sharing convention
 
 Every site keeps the inputs and the exact commands in the repository, so the
-icons and share image can be rebuilt at any time:
+icons and share image can be rebuilt at any time. [ASSETS.md](ASSETS.md) lists
+the sizes and formats the sources need:
 
 - `source/icon.png` (or `.jpg`) — the favicon artwork, tracked in git.
 - `source/share.png` (or `.jpg`) — the share artwork, tracked in git.

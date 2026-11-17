@@ -204,8 +204,7 @@ Adjust the negative margins for the site's breakpoints.
 ## CI usage
 
 Add the credentials as repository secrets and call this repository directly.
-Using `@main` means every deployment runs the latest tooling, with no vendored
-copy to keep in sync:
+Using `@main` means the deploy step always runs the latest `deploy.sh`:
 
 ```yaml
 - uses: your-account/site-tooling@main
@@ -248,9 +247,10 @@ Requires `gh` with `gh auth login`.
 
 ## Updating local copies
 
-CI runs this repository directly, so deployments never depend on a vendored
-copy. The `_shared/` directory is only for local `./deploy.sh` runs. Refresh the
-local copies with:
+The CI deploy step runs this repository directly, but site builds call the
+vendored Python tools (`_shared/cache-bust.py`, `_shared/imgopt.py`) both
+locally and in CI, and CI installs `_shared/requirements.txt`. Keep every copy
+current. Refresh them with:
 
 ```bash
 cp .sync.env.example .sync.env   # .sync.env is gitignored
@@ -284,8 +284,9 @@ with `--padding` (default `0.08`), or write only the tab icons with
 
 ## Vendoring
 
-`_shared/` is the local copy used by `./deploy.sh`; CI does not need it. Keep it
-tracked with `git subtree` and do not edit it inside a site repository.
+`_shared/` is the copy used by `./deploy.sh` and by the build scripts, locally
+and in CI. Keep it tracked with `git subtree` and do not edit it inside a site
+repository. `sync.sh` only works on copies added with `git subtree add`.
 
 First time:
 

@@ -14,6 +14,7 @@ FTP or SFTP host with `lftp`.
 - `appshots.py` — composites raw screenshots into a phone border and writes
   WebP files.
 - `favicons.py` — generates a favicon and app-icon set from one source image.
+- `ogimage.py` — generates a 1200×630 social share image from a logo or still.
 
 ## Configuration
 
@@ -282,6 +283,39 @@ background (white by default) because iOS renders transparency as black. Set
 with `--padding` (default `0.08`), or write only the tab icons with
 `--no-app-icons`.
 
+## Share images
+
+`ogimage.py` writes the JPEG that link previews show (`og:image`). Contain mode
+centres a logo on a solid colour and never upscales it; cover mode fills the
+frame with a still or poster and crops the overflow evenly:
+
+```bash
+python3 ogimage.py source/share.png --out static/share.jpg --background '#ffe200'
+python3 ogimage.py source/poster.png --out static/share.jpg --fit cover
+```
+
+The default size is 1200×630; `--size 1200x675` keeps a 16:9 artwork intact.
+`--padding` sets the contain-mode margin as a fraction of the height (default
+`0.12`).
+
+## Icons and sharing convention
+
+Every site keeps the inputs and the exact commands in the repository, so the
+icons and share image can be rebuilt at any time:
+
+- `source/icon.png` (or `.jpg`) — the favicon artwork, tracked in git.
+- `source/share.png` (or `.jpg`) — the share artwork, tracked in git.
+- `scripts/icons.sh` — runs `favicons.py` into `static/favicons/` and
+  `ogimage.py` into `static/share.jpg`, with the site's colours and padding.
+- `static/.htaccess` redirects `/favicon.ico` to `/favicons/favicon.ico`,
+  because browsers and crawlers request the root path regardless of the HTML.
+- The page head links `favicons/favicon.ico` (`sizes="any"`), the 32 and 16 px
+  PNGs, `apple-touch-icon.png` and `site.webmanifest`, and sets `og:image` with
+  `og:image:width`, `og:image:height` and `og:image:alt`, plus
+  `twitter:card` `summary_large_image` and a canonical URL.
+- `static/site.webmanifest` lists `/favicons/android-chrome-192x192.png` and
+  `-512x512.png` with the same `theme_color` as the page.
+
 ## Vendoring
 
 `_shared/` is the copy used by `./deploy.sh` and by the build scripts, locally
@@ -311,8 +345,8 @@ git subtree add --prefix _shared <tooling-repo-url> main --squash
 ## Requirements
 
 `bash` and `lftp`. Install `lftp` with `brew install lftp` on macOS or
-`apt-get install lftp` on Debian/Ubuntu. `appshots.py`, `favicons.py`, and
-`imgopt.py` also need Pillow: `python3 -m pip install -r requirements.txt`.
+`apt-get install lftp` on Debian/Ubuntu. `appshots.py`, `favicons.py`,
+`imgopt.py`, and `ogimage.py` also need Pillow: `python3 -m pip install -r requirements.txt`.
 
 The password is passed to `lftp` through `LFTP_PASSWORD`, so it never appears in
 the process list, on disk, or in a workflow log.

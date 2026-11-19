@@ -74,6 +74,58 @@ _shared/serve.sh dist 8080
 PORT=8080 _shared/serve.sh dist
 ```
 
+## Language auto-detection
+
+For a site with a Dutch root and an English `/en/` page, add this to the
+template `<head>` (before the stylesheets) to send first-time English visitors
+to `/en/` without cookies:
+
+```html
+<script>
+	(function () {
+		var root = document.documentElement;
+		if (root.lang !== "nl") return;
+
+		// Never redirect crawlers or link previews.
+		if (/bot|crawl|spider|slurp|preview/i.test(navigator.userAgent)) return;
+		// Allow a manual override from the URL.
+		if (/[?&]lang=nl(?:&|$)/.test(location.search)) return;
+
+		var preferred = null;
+		try {
+			preferred = localStorage.getItem("lang");
+		} catch (error) {}
+
+		if (!preferred) {
+			var languages = navigator.languages || [navigator.language || ""];
+			var primary = String(languages[0] || "").toLowerCase();
+			preferred = primary.indexOf("en") === 0 ? "en" : "nl";
+		}
+
+		if (preferred === "en") location.replace("en/");
+	})();
+</script>
+```
+
+Remember an explicit choice when a visitor clicks a language link, so the
+redirect respects it later:
+
+```js
+document.querySelectorAll(".lang-option").forEach((link) => {
+	link.addEventListener("click", () => {
+		const lang = link.getAttribute("hreflang");
+		if (lang !== "nl" && lang !== "en") return;
+		try {
+			localStorage.setItem("lang", lang);
+		} catch (error) {}
+	});
+});
+```
+
+The storage key is functional (a user-requested language preference), not
+tracking, so no cookie consent banner is needed. Crawlers are never redirected;
+`/?lang=nl` forces Dutch for local previews or direct links.
+
 ## Cache busting
 
 `cache-bust.py` appends `?v=<content-hash>` to local CSS, JS, image, and font

@@ -10,6 +10,7 @@ FTP or SFTP host with `lftp`.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
 - `serve.sh` — serves a build directory for local preview.
 - `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
+- `mdpage.py` — renders Markdown files as one HTML page each.
 - `media.py` — converts media into published output from a `media.json` manifest.
 - `imgopt.py` — compatibility command line for the older `--src/--out` interface.
 - `appshots.py` — composites raw screenshots into the shared phone border
@@ -186,6 +187,26 @@ python3 _shared/cache-bust.py dist
 The default directory is `dist`. Unchanged files keep their URL and their cache;
 changed files get a new URL. Serve HTML with `Cache-Control: no-cache` so
 browsers pick up new asset URLs immediately.
+
+## Markdown pages
+
+`mdpage.py` renders one HTML page per Markdown file, for simple pages such as
+privacy policies or app terms. Every `<name>.md` becomes
+`<out>/<name>/index.html`, so `privacy/club-baboo-puzzles.md` is served at
+`/privacy/club-baboo-puzzles/`:
+
+```bash
+python3 _shared/mdpage.py privacy --out dist/privacy \
+  --template privacy/_page.html --stylesheet ../../styles.css --clean
+```
+
+The page shell stays in the site as a template with `{title}`, `{body}`, and
+`{stylesheet}` placeholders; without `--template` a minimal page is used. The
+dialect is small on purpose: `#`/`##` headings (rendered one level deeper),
+`**bold**`, `*italic*`, `[links](url)`, and `- ` lists. Blank lines separate
+paragraphs, and single newlines inside a paragraph become `<br>`. `--clean`
+deletes the output directory first, so removing a Markdown file removes its
+page too.
 
 ## Media conversion
 
@@ -501,8 +522,8 @@ Requires `gh` with `gh auth login`.
 ## Updating local copies
 
 The CI deploy step runs this repository directly, but site builds call the
-vendored Python tools (`_shared/cache-bust.py`, `_shared/media.py`, and the
-`_shared/imgopt.py` compatibility wrapper) both
+vendored Python tools (`_shared/cache-bust.py`, `_shared/mdpage.py`,
+`_shared/media.py`, and the `_shared/imgopt.py` compatibility wrapper) both
 locally and in CI, and CI installs `_shared/requirements.txt`. Keep every copy
 current. Refresh them with:
 

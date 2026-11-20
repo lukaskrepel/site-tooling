@@ -5,18 +5,25 @@ tools can produce sharp output. The tools scale down but never usefully scale
 up: a source smaller than the sizes below gives soft or small results.
 
 Sources live in the site's `source/` folder and are tracked in git, so every
-derived file can be rebuilt. Published derivatives live in `static/`.
+derived file can be rebuilt. Published derivatives live in `static/`. Each
+site's `media.json` lists exactly which files are converted, to what size and
+format, and where they go.
+
+Two sites are exceptions. `frameorder.nl` keeps its image and poster sources in
+`static/`, because `source/` is gitignored there apart from `icon.png` (the video
+masters are too large for git). `lukaskrepel.nl` keeps its `source/images` and
+most of `source/videos` tracked, but leaves the largest video masters out of git.
 
 ## Icons and sharing
 
 These are built by the site's `scripts/icons.sh` (see the README's "Icons and
 sharing convention").
 
-| Source file        | Size                                     | Format                          | Produces                                   |
-| ------------------ | ---------------------------------------- | ------------------------------- | ------------------------------------------ |
-| `source/icon.png`  | square, 1024×1024 (minimum 512×512)      | PNG with a transparent background | `static/favicons/` (16, 32, 180, 192, 512 px and a 16–64 px `.ico`) |
-| `source/share.png` | logo: at least 1050 px wide or 480 px tall | PNG with a transparent background | `static/share.jpg`, 1200×630, logo centred on a colour |
-| `source/share.jpg` | still or poster: at least 1200×630       | JPG or PNG, full bleed          | `static/share.jpg`, 1200×630, scaled to fill and cropped evenly |
+| Source file        | Size                                       | Format                            | Produces                                                            |
+| ------------------ | ------------------------------------------ | --------------------------------- | ------------------------------------------------------------------- |
+| `source/icon.png`  | square, 1024×1024 (minimum 512×512)        | PNG with a transparent background | `static/favicons/` (16, 32, 180, 192, 512 px and a 16–64 px `.ico`) |
+| `source/share.png` | logo: at least 1050 px wide or 480 px tall | PNG with a transparent background | `static/share.jpg`, 1200×630, logo centred on a colour              |
+| `source/share.jpg` | still or poster: at least 1200×630         | JPG or PNG, full bleed            | `static/share.jpg`, 1200×630, scaled to fill and cropped evenly     |
 
 **Icon artwork.** Crop to the artwork itself with no margin of your own:
 `favicons.py` adds padding (3% for tab icons, 8% for app icons). Non-square
@@ -40,14 +47,15 @@ image with `og:image:alt`.
 
 ## Page images
 
-Images that `imgopt.py` converts to WebP during the build.
+Images that `media.py` converts to WebP during the build, as listed in the
+site's `media.json`.
 
-| Kind                       | Size                                         | Format                                |
-| -------------------------- | -------------------------------------------- | ------------------------------------- |
-| photos, stills, artwork    | at least 2× the largest width shown on the page, up to the `--max-width` the build passes (usually 1280–1600 px) | JPG for photos, PNG for flat artwork |
-| logos and line art         | at least 2× the displayed width              | PNG with a transparent background     |
-| responsive images          | at least the largest `--widths` value (e.g. 1280 px for `--widths 640,960,1280`) | JPG or PNG |
-| hand-made WebP             | final size                                   | WebP (copied unchanged)               |
+| Kind                    | Size                                                                                                             | Format                               |
+| ----------------------- | ---------------------------------------------------------------------------------------------------------------- | ------------------------------------ |
+| photos, stills, artwork | at least 2× the largest width shown on the page, up to the `--max-width` the build passes (usually 1280–1600 px) | JPG for photos, PNG for flat artwork |
+| logos and line art      | at least 2× the displayed width                                                                                  | PNG with a transparent background    |
+| responsive images       | at least the largest `--widths` value (e.g. 1280 px for `--widths 640,960,1280`)                                 | JPG or PNG                           |
+| hand-made WebP          | final size                                                                                                       | WebP (copied unchanged)              |
 
 The 2× rule keeps images sharp on high-density screens. Sources wider than
 `--max-width` are scaled down; narrower sources are never scaled up.
@@ -58,9 +66,9 @@ The 2× rule keeps images sharp on high-density screens. Sources wider than
 `phone-border.png` in this repository (2674×1316, transparent screen window at
 290,70–2386,1248). Sites don't keep their own copy.
 
-| File                                   | Size                                              | Format |
-| -------------------------------------- | ------------------------------------------------- | ------ |
-| `source/app-screenshots/<app>/*.png`   | raw captures at the app's own resolution, 16:9 landscape (e.g. 2400×1350) | PNG |
+| File                                 | Size                                                                      | Format |
+| ------------------------------------ | ------------------------------------------------------------------------- | ------ |
+| `source/app-screenshots/<app>/*.png` | raw captures at the app's own resolution, 16:9 landscape (e.g. 2400×1350) | PNG    |
 
 Captures are scaled to fit the 2096×1178 window, so anything 16:9 and at least
 that size works. Name each capture after what it shows (`insects.png`,

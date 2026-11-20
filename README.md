@@ -10,7 +10,8 @@ FTP or SFTP host with `lftp`.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
 - `serve.sh` — serves a build directory for local preview.
 - `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
-- `imgopt.py` — generates resized WebP/JPEG derivatives from JPG/PNG sources.
+- `media.py` — converts media into published output from a `media.json` manifest.
+- `imgopt.py` — compatibility command line for the older `--src/--out` interface.
 - `appshots.py` — composites raw screenshots into the shared phone border
   (`phone-border.png`) and writes
   WebP files.
@@ -141,42 +142,61 @@ The default directory is `dist`. Unchanged files keep their URL and their cache;
 changed files get a new URL. Serve HTML with `Cache-Control: no-cache` so
 browsers pick up new asset URLs immediately.
 
-## Image optimisation
+## Media conversion
 
-`imgopt.py` reads raster sources (JPG/PNG) and writes resized, compressed WebP
-or JPEG files into a build directory. The source folder name and relative path
-are kept, so `--src static/images --out dist` writes `dist/images/...`.
-Reference mode only converts files the pages actually use:
+`media.py` converts a site's source media into published output according to a
+`media.json` manifest at the repository root. The manifest is the policy — which
+files, sizes, formats, renames, and video commands — so a site never keeps a
+converter script of its own.
+
+```bash
+python3 _shared/media.py            # remake whatever is out of date
+python3 _shared/media.py --force    # remake everything
+python3 _shared/media.py --videos   # also run video jobs (skipped by default)
+python3 _shared/media.py --dry-run  # print the plan without writing
+```
+
+Every job has a `src` and an `out`. With a directory `src`, relative paths are
+mirrored into the output directory (`source/images/thumbnails/a.png` →
+`static/images/thumbnails/a.png`). With a file `src`, `out` is the target file,
+which is how renames are expressed. Outputs are written with 0644 permissions.
+
+- `format` is `webp`, `jpeg`, `png`, or `copy` (byte-for-byte, e.g. GIFs).
+- `max_width` downscales wider sources and never upscales; `widths` also writes
+  `<name>-640.<ext>` variants for `srcset`; `size` resizes to exact dimensions;
+  `crop: "center"` with `aspect` crops before resizing; `trim` removes fully
+  transparent borders.
+- `quality` (default 82), `method` (WebP effort, default 4), `progressive`
+  (JPEG, default on), `flatten` (JPEG transparency on white), `mode` (`rgb`
+  converts to RGB; the default `preserve` keeps alpha), and `exif_transpose`.
+- `only_if_smaller` skips a derivative that is not smaller (`true`) or publishes
+  the source bytes instead (`"copy"`).
+- `include` limits a directory job to a list of paths or a named group from the
+  manifest's `groups`. Entries can be selectors that read paths out of JSON, for
+  example `{"json": "data/animations.json", "path": "logos[].src", "dir": "logos"}`.
+- `refs` converts only files referenced in the given HTML/CSS; `ref_prefix` is
+  the published folder used to match them. `prune_source` deletes the original
+  that a site build copied into the output tree, and `cache` reuses encoded
+  derivatives between builds.
+- `{"favicon": {...}}` runs `favicons.py` (with an optional `trim`), and
+  `{"video": {...}}` runs a command array with `{src}` and `{out}`
+  placeholders, but only when `--videos` is passed.
+
+Manifest paths resolve from the manifest's directory. Without `--force`, an
+output newer than its source is skipped; `--force` remakes everything. A missing
+source or an unresolved `refs` entry is an error, not a warning. Hand-authored
+`.webp` files are copied through unchanged.
+
+`imgopt.py` keeps the older command line working for sites that have not moved
+to a manifest; it uses the same engine and the same flags as before:
 
 ```bash
 python3 _shared/imgopt.py --src static/images --out dist \
   --refs template.html static/styles.css
-```
-
-Explicit mode converts a folder, optionally filtered by glob:
-
-```bash
 python3 _shared/imgopt.py --src static/videos --out dist --match '*.jpg' \
   --max-width 1280 --quality 80 --prune-source --cache .cache/imgopt
 ```
 
-- `--max-width` downscales wider sources and never upscales.
-- `--widths 640,960` also writes `<name>-640.webp` and `<name>-960.webp` for
-  `srcset`; the base file keeps the plain name.
-- `--prune-source` deletes the original that the site build copied into the
-  output tree. Use it when only the derivative is published; leave it off when
-  a `<picture>` fallback still points at the original.
-- `--cache` reuses encoded files between builds, so a wiped `dist/` does not
-  re-encode every asset. Add the cache directory to the site's `.gitignore`.
-- Reference mode fails when a referenced asset has no matching source, which
-  catches typos in `template.html` and `styles.css`.
-
-Output is WebP at quality 82 by default. `--format jpeg` re-encodes to JPEG
-instead, with a white background for transparent areas. `--method 0-6` sets the
-WebP effort; the default of 4 is much faster than 6 for a marginal size
-difference.
-
-Hand-authored `.webp` files in a source folder are copied through unchanged.
 In GitHub Actions, install Pillow in the build job (`actions/setup-python`
 followed by `pip install -r _shared/requirements.txt`) before running the
 build script.
@@ -306,7 +326,8 @@ Requires `gh` with `gh auth login`.
 ## Updating local copies
 
 The CI deploy step runs this repository directly, but site builds call the
-vendored Python tools (`_shared/cache-bust.py`, `_shared/imgopt.py`) both
+vendored Python tools (`_shared/cache-bust.py`, `_shared/media.py`, and the
+`_shared/imgopt.py` compatibility wrapper) both
 locally and in CI, and CI installs `_shared/requirements.txt`. Keep every copy
 current. Refresh them with:
 
@@ -404,7 +425,7 @@ git subtree add --prefix _shared <tooling-repo-url> main --squash
 
 `bash` and `lftp`. Install `lftp` with `brew install lftp` on macOS or
 `apt-get install lftp` on Debian/Ubuntu. `appshots.py`, `favicons.py`,
-`imgopt.py`, and `ogimage.py` also need Pillow: `python3 -m pip install -r requirements.txt`.
+`media.py`, `imgopt.py`, and `ogimage.py` also need Pillow: `python3 -m pip install -r requirements.txt`.
 
 The password is passed to `lftp` through `LFTP_PASSWORD`, so it never appears in
 the process list, on disk, or in a workflow log.

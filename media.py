@@ -59,12 +59,12 @@ import io
 import json
 import os
 import re
-import shutil
 import subprocess
 import sys
 import tempfile
 from dataclasses import dataclass, field
 from pathlib import Path, PurePosixPath
+from typing import NoReturn
 
 try:
     from PIL import Image, ImageOps
@@ -143,7 +143,7 @@ class Context:
     failures: int = 0
 
 
-def fail(message: str) -> None:
+def fail(message: str) -> NoReturn:
     raise SystemExit(f"error: {message}")
 
 
@@ -366,7 +366,7 @@ def cache_key(source: Path, settings: dict) -> str:
             f"|{settings['flatten']}|{settings['exif_transpose']}"
             f"|{settings['max_width']}|{settings['size']}|{settings['aspect']}"
             f"|{settings['trim']}|{settings['resize']}|{settings['mode']}"
-        ).encode("utf-8")
+        ).encode()
     )
     return digest.hexdigest()[:16]
 
@@ -594,7 +594,7 @@ def run_image_job(job: dict, ctx: Context) -> None:
 
     for source, relative in sources:
         if format_name == "copy":
-            target = out / relative
+            target = out / relative if relative is not None else out
             if not force and is_up_to_date(source, [target]):
                 ctx.stats.up_to_date += 1
                 continue

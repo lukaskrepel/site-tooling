@@ -42,7 +42,9 @@ Image job keys:
 Other job types:
 
     {"favicon": {"src": ..., "out": DIR, "background": "#rrggbb",
-                 "padding": 0.08, "trim": true}}
+                 "padding": 0.08, "favicon_padding": 0.03, "trim": true}}
+    {"share": {"src": ..., "out": FILE, "background": "#rrggbb",
+               "padding": 0.12, "fit": "contain", "size": [1200, 630]}}
     {"video": {"src": ..., "out": ..., "command": ["avconvert", "-s",
                 "{src}", "-p", "Preset1280x720", "-o", "{out}", "--replace"]}}
 
@@ -117,7 +119,8 @@ IMAGE_KEYS = {
     "ref_prefix",
     "skip_up_to_date",
 }
-FAVICON_KEYS = {"src", "out", "background", "padding", "trim"}
+FAVICON_KEYS = {"src", "out", "background", "padding", "favicon_padding", "trim"}
+SHARE_KEYS = {"src", "out", "background", "padding", "fit", "size", "quality"}
 VIDEO_KEYS = {"src", "out", "command"}
 
 
@@ -404,6 +407,12 @@ def validate_manifest(manifest: dict) -> None:
                 fail(f"favicon job {index + 1} must contain only 'favicon'")
             spec = job["favicon"]
             allowed, label = FAVICON_KEYS, "favicon"
+        elif "share" in job:
+            kinds = set(job)
+            if kinds != {"share"}:
+                fail(f"share job {index + 1} must contain only 'share'")
+            spec = job["share"]
+            allowed, label = SHARE_KEYS, "share"
         else:
             spec = job
             allowed, label = IMAGE_KEYS, "image"
@@ -421,6 +430,25 @@ def validate_manifest(manifest: dict) -> None:
                 fail(f"{label} job {index + 1} is missing '{required}'")
 
         if label != "image":
+            if label == "share":
+                if spec.get("fit") not in (None, "contain", "cover"):
+                    fail(f"share job {index + 1}: fit must be contain or cover")
+                if "size" in spec and (
+                    not isinstance(spec["size"], list)
+                    or len(spec["size"]) != 2
+                    or not all(
+                        isinstance(value, int) and value > 0 for value in spec["size"]
+                    )
+                ):
+                    fail(f"share job {index + 1}: size must be [width, height]")
+                padding = spec.get("padding")
+                if padding is not None and not 0 <= float(padding) < 0.5:
+                    fail(f"share job {index + 1}: padding must be 0 up to 0.5")
+                quality = spec.get("quality")
+                if quality is not None and (
+                    not isinstance(quality, int) or not 1 <= quality <= 100
+                ):
+                    fail(f"share job {index + 1}: quality must be 1-100")
             continue
 
         if "format" not in spec:
@@ -756,6 +784,8 @@ def run_favicon_job(spec: dict, ctx: Context) -> None:
                 command += ["--background", str(spec["background"])]
             if spec.get("padding") is not None:
                 command += ["--padding", str(spec["padding"])]
+            if spec.get("favicon_padding") is not None:
+                command += ["--favicon-padding", str(spec["favicon_padding"])]
             try:
                 subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
             except subprocess.CalledProcessError as error:
@@ -766,6 +796,54 @@ def run_favicon_job(spec: dict, ctx: Context) -> None:
             os.chmod(path, FILE_MODE)
     print(f"  {out}/ ← {source} (favicon set)")
     ctx.stats.written += len(expected)
+
+
+def run_share_job(spec: dict, ctx: Context) -> None:
+    source = resolve(ctx.root, spec["src"])
+    out = resolve(ctx.root, spec["out"])
+    if not source.is_file():
+        fail(f"missing source: {source}")
+
+    if (
+        not ctx.force
+        and out.is_file()
+        and out.stat().st_mtime >= source.stat().st_mtime
+    ):
+        ctx.stats.up_to_date += 1
+        return
+
+    command = [
+        sys.executable,
+        str(Path(__file__).with_name("ogimage.py")),
+        str(source),
+        "--out",
+        str(out),
+    ]
+    if spec.get("background"):
+        command += ["--background", str(spec["background"])]
+    if spec.get("padding") is not None:
+        command += ["--padding", str(spec["padding"])]
+    if spec.get("fit"):
+        command += ["--fit", str(spec["fit"])]
+    if spec.get("size"):
+        width, height = spec["size"]
+        command += ["--size", f"{width}x{height}"]
+    if spec.get("quality") is not None:
+        command += ["--quality", str(spec["quality"])]
+
+    if ctx.dry_run:
+        print(f"  would run {' '.join(command)}")
+        ctx.stats.written += 1
+        return
+
+    try:
+        subprocess.run(command, check=True, stdout=subprocess.DEVNULL)
+    except subprocess.CalledProcessError as error:
+        fail(f"ogimage.py failed for {source}: {error}")
+    if out.is_file():
+        os.chmod(out, FILE_MODE)
+    print(f"  {out} ← {source} (share image)")
+    ctx.stats.written += 1
 
 
 def run_video_job(spec: dict, ctx: Context) -> None:
@@ -842,6 +920,8 @@ def run(
             run_video_job(job["video"], ctx)
         elif "favicon" in job:
             run_favicon_job(job["favicon"], ctx)
+        elif "share" in job:
+            run_share_job(job["share"], ctx)
         else:
             run_image_job(job, ctx)
 

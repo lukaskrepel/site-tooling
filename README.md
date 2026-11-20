@@ -53,8 +53,9 @@ shared.
      `source/`), and `media.py` writes derivatives into `dist/` during
      `scripts/build.sh`. `dist/` is never committed; CI installs Pillow and
      runs the same build script. (frameorder.nl)
-5. Icons and sharing: use `scripts/icons.sh`, or a `favicon` job plus a share
-   `jpeg` job in `media.json` — not both. Keep the artwork in `source/`.
+5. Icons and sharing: add a `favicon` job and a `share` job to `media.json`.
+   There is no per-site icons script; keep the artwork in `source/` (or in
+   `static/images/` when it is a logo that is already published).
 6. Build and preview with `./update.sh` and `_shared/serve.sh dist`; deploy
    with `./deploy.sh` or the CI action.
 7. For pattern A, `python3 _shared/media.py --force` followed by `git status`
@@ -223,8 +224,11 @@ which is how renames are expressed. Outputs are written with 0644 permissions.
   the published folder used to match them. `prune_source` deletes the original
   that a site build copied into the output tree, and `cache` reuses encoded
   derivatives between builds (add that directory to the site's `.gitignore`).
-- `{"favicon": {...}}` runs `favicons.py` (with an optional `trim`), and
-  `{"video": {...}}` runs a command array with `{src}` and `{out}`
+- `{"favicon": {...}}` runs `favicons.py`: `background`, app-icon `padding`,
+  `favicon_padding`, and optional `trim`.
+- `{"share": {...}}` runs `ogimage.py`: `background`, `padding`, `fit`
+  (`contain` or `cover`), `size`, and `quality`.
+- `{"video": {...}}` runs a command array with `{src}` and `{out}`
   placeholders, but only when `--videos` is passed.
 
 ### Pattern A: source/ to committed static/
@@ -315,6 +319,14 @@ A file `src` with a file `out` renames; favicon and video jobs cover the rest:
 			"out": "static/favicons",
 			"background": "#ffffff",
 			"trim": true
+		}
+	},
+	{
+		"share": {
+			"src": "source/icon.png",
+			"out": "static/share.jpg",
+			"background": "#ffffff",
+			"padding": 0.12
 		}
 	},
 	{
@@ -541,16 +553,20 @@ The default size is 1200×630; `--size 1200x675` keeps a 16:9 artwork intact.
 
 ## Icons and sharing convention
 
-Every site keeps the inputs and the exact commands in the repository, so the
-icons and share image can be rebuilt at any time. Use one builder per site:
-`scripts/icons.sh` (the default) or, when the site already has a `media.json`,
-a `favicon` job plus a share `jpeg` job. Keeping both is the usual source of
-drift. [ASSETS.md](ASSETS.md) lists the sizes and formats the sources need:
+Every site keeps the inputs in the repository and the policy in `media.json`,
+so the icons and share image can be rebuilt with `python3 _shared/media.py`
+(add `--force` after changing artwork, then commit the results). There is no
+per-site icons script. [ASSETS.md](ASSETS.md) lists the sizes and formats the
+sources need:
 
 - `source/icon.png` (or `.jpg`) — the favicon artwork, tracked in git.
-- `source/share.png` (or `.jpg`) — the share artwork, tracked in git.
-- `scripts/icons.sh` — runs `favicons.py` into `static/favicons/` and
-  `ogimage.py` into `static/share.jpg`, with the site's colours and padding.
+- `source/share.png` (or `.jpg`) — the share artwork, tracked in git. When the
+  share image is a logo that is already published, the `share` job can read it
+  from `static/images/`.
+- A `favicon` job writes `static/favicons/` through `favicons.py`, with the
+  site's background and padding.
+- A `share` job writes `static/share.jpg` through `ogimage.py`, with the site's
+  colour, padding, and fit.
 - `static/.htaccess` redirects `/favicon.ico` to `/favicons/favicon.ico`,
   because browsers and crawlers request the root path regardless of the HTML.
 - The page head links `favicons/favicon.ico` (`sizes="any"`), the 32 and 16 px

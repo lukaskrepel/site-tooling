@@ -26,9 +26,8 @@ engine is `media.py`. Run `python3 _shared/media.py` after changing a source.
 
 ## Icons and sharing
 
-These are built by `scripts/icons.sh`, or by `favicon` and share-image `jpeg`
-jobs in the site's `media.json` (see the README's "Icons and sharing
-convention").
+These are built by the `favicon` and `share` jobs in the site's `media.json`
+(see the README's "Icons and sharing convention").
 
 | Source file        | Size                                       | Format                            | Produces                                                            |
 | ------------------ | ------------------------------------------ | --------------------------------- | ------------------------------------------------------------------- |

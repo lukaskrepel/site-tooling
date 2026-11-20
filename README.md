@@ -8,9 +8,16 @@ FTP or SFTP host with `lftp`.
 - `action.yml` — GitHub composite action that runs the same script in CI.
 - `runs.sh` — prints recent Actions runs for a configured set of repositories.
 - `sync.sh` — refreshes the vendored `_shared/` copies in local checkouts.
+- `update.sh` — builds a site and prints the preview command; each site keeps a
+  one-line `update.sh` that executes it.
 - `serve.sh` — serves a build directory for local preview.
 - `cache-bust.py` — appends content hashes to local asset URLs in a build directory.
+- `content.py` — the shared `[LABEL:]` content grammar and inline Markdown for
+  the site build scripts.
 - `mdpage.py` — renders Markdown files as one HTML page each.
+- `pagebuild.py` — builds `dist/index.html` from `template.html`, `content.md`
+  and `static/` for sites without extra build steps.
+- `lazy-load.py` — adds `loading="lazy"` to images in built pages.
 - `media.py` — converts media into published output from a `media.json` manifest.
 - `imgopt.py` — compatibility command line for the older `--src/--out` interface.
 - `appshots.py` — composites raw screenshots into the shared phone border
@@ -30,6 +37,8 @@ shared.
 
 1. Start from a site with the same deployment target and copy its
    `scripts/build.py`, `scripts/build.sh`, `update.sh`, and `deploy.sh`.
+   A site whose build is only placeholders does not need `scripts/build.py`:
+   call `_shared/pagebuild.py` from `scripts/build.sh` instead.
 2. Vendor the tooling:
 
    ```bash
@@ -121,6 +130,29 @@ _shared/serve.sh dist 8080
 PORT=8080 _shared/serve.sh dist
 ```
 
+## Simple page builds
+
+A site whose build is just placeholders plus content does not need a
+`scripts/build.py`. `pagebuild.py` copies `static/` to `dist/` and fills the
+`{{placeholders}}` in `template.html` from `content.md`:
+
+```bash
+python3 _shared/pagebuild.py
+```
+
+The defaults are `template.html`, `content.md`, `static/`, and `dist`; every
+path can be overridden. A site with more build steps (language variants, feeds,
+data-driven sections) keeps its own `scripts/build.py` and imports
+`content.py` for the `[LABEL:]` grammar, inline Markdown, and bilingual
+splitting instead of copying that code. cartoon-box.com and jillestheintern.com
+use `pagebuild.py` directly; clubbaboo.com, frameorder.nl and lukaskrepel.nl
+import `content.py`.
+
+The grammar itself is one small format: `[LABEL: name]` blocks, `>` paragraphs,
+`- ` lists, `**bold**`, `*italic*`, `__bold__`, `_italic_`, and `[links](url)`.
+Bilingual sites split each block with `### nl` / `### en` headings and pass
+their own block renderer.
+
 ## Language auto-detection
 
 For a site with a Dutch root and an English `/en/` page, add this to the
@@ -187,6 +219,17 @@ python3 _shared/cache-bust.py dist
 The default directory is `dist`. Unchanged files keep their URL and their cache;
 changed files get a new URL. Serve HTML with `Cache-Control: no-cache` so
 browsers pick up new asset URLs immediately.
+
+## Lazy loading
+
+`lazy-load.py` adds `loading="lazy"` to `<img>` tags in built pages. Tags that
+contain a `--skip` token stay eager, which is how above-the-fold artwork and
+images inside a player are kept out of the pass:
+
+```bash
+python3 _shared/lazy-load.py dist/index.html dist/en/index.html \
+  --skip 'id="hero"' --skip 'class="tv-image"'
+```
 
 ## Markdown pages
 
@@ -522,8 +565,9 @@ Requires `gh` with `gh auth login`.
 ## Updating local copies
 
 The CI deploy step runs this repository directly, but site builds call the
-vendored Python tools (`_shared/cache-bust.py`, `_shared/mdpage.py`,
-`_shared/media.py`, and the `_shared/imgopt.py` compatibility wrapper) both
+vendored Python tools (`_shared/cache-bust.py`, `_shared/content.py`,
+`_shared/lazy-load.py`, `_shared/mdpage.py`, `_shared/media.py`,
+`_shared/pagebuild.py`, and the `_shared/imgopt.py` compatibility wrapper) both
 locally and in CI, and CI installs `_shared/requirements.txt`. Keep every copy
 current. Refresh them with:
 

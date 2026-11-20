@@ -14,10 +14,21 @@ Two sites are exceptions. `frameorder.nl` keeps its image and poster sources in
 masters are too large for git). `lukaskrepel.nl` keeps its `source/images` and
 most of `source/videos` tracked, but leaves the largest video masters out of git.
 
+## How sources become published files
+
+| Pattern                  | Originals                | Derivatives | Committed    |
+| ------------------------ | ------------------------ | ----------- | ------------ |
+| A: `source/` → `static/` | `source/`                | `static/`   | both         |
+| B: rasters → `dist/`     | `static/` (or `source/`) | `dist/`     | sources only |
+
+The jobs, widths, qualities, and formats live in the site's `media.json`; the
+engine is `media.py`. Run `python3 _shared/media.py` after changing a source.
+
 ## Icons and sharing
 
-These are built by the site's `scripts/icons.sh` (see the README's "Icons and
-sharing convention").
+These are built by `scripts/icons.sh`, or by `favicon` and share-image `jpeg`
+jobs in the site's `media.json` (see the README's "Icons and sharing
+convention").
 
 | Source file        | Size                                       | Format                            | Produces                                                            |
 | ------------------ | ------------------------------------------ | --------------------------------- | ------------------------------------------------------------------- |

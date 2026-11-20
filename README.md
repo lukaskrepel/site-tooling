@@ -21,6 +21,50 @@ FTP or SFTP host with `lftp`.
 See [ASSETS.md](ASSETS.md) for the source files each site needs, with sizes
 and formats.
 
+## New site
+
+A site is a build script, a `static/` tree, its content files, and — when it
+publishes images — a `media.json`. The media policy is data; the engine is
+shared.
+
+1. Start from a site with the same deployment target and copy its
+   `scripts/build.py`, `scripts/build.sh`, `update.sh`, and `deploy.sh`.
+2. Vendor the tooling:
+
+   ```bash
+   git subtree add --prefix _shared \
+     https://github.com/lukaskrepel/site-tooling.git main --squash
+   ```
+
+   Add the checkout to `SITE_DIRS` in `site-tooling/.sync.env` so `sync.sh`
+   can refresh it later.
+
+3. Add a `.gitignore` covering `.env`, `dist/`, `.cache/`, `__pycache__/`,
+   `.DS_Store`, and any source masters too large for git.
+4. If the site converts media, install Pillow once
+   (`python3 -m pip install -r _shared/requirements.txt`) and add
+   `media.json` at the repository root. Copy the pattern below that matches
+   where the published files live:
+   - **A — `source/` → committed `static/`**: originals in `source/`, the
+     converted PNG/JPG/WebP files committed in `static/`. Run
+     `python3 _shared/media.py` yourself and commit the result; CI only builds
+     the pages. (lukaskrepel.nl, jillestheintern.com)
+   - **B — rasters → generated `dist/`**: sources stay in `static/` (or
+     `source/`), and `media.py` writes derivatives into `dist/` during
+     `scripts/build.sh`. `dist/` is never committed; CI installs Pillow and
+     runs the same build script. (frameorder.nl)
+5. Icons and sharing: use `scripts/icons.sh`, or a `favicon` job plus a share
+   `jpeg` job in `media.json` — not both. Keep the artwork in `source/`.
+6. Build and preview with `./update.sh` and `_shared/serve.sh dist`; deploy
+   with `./deploy.sh` or the CI action.
+7. For pattern A, `python3 _shared/media.py --force` followed by `git status`
+   must be clean. That is how you know the manifest reproduces what is
+   published.
+
+Sites do not add their own image or video converter. If a treatment is
+missing, add a manifest key (or job type) to `_shared/media.py`, keep the
+existing flags working, and document it here.
+
 ## Configuration
 
 Credentials are read from the environment or from `.env` in the current working
@@ -147,7 +191,8 @@ browsers pick up new asset URLs immediately.
 `media.py` converts a site's source media into published output according to a
 `media.json` manifest at the repository root. The manifest is the policy — which
 files, sizes, formats, renames, and video commands — so a site never keeps a
-converter script of its own.
+converter script of its own. Run it from the site root; the default manifest is
+`media.json` there.
 
 ```bash
 python3 _shared/media.py            # remake whatever is out of date
@@ -177,10 +222,128 @@ which is how renames are expressed. Outputs are written with 0644 permissions.
 - `refs` converts only files referenced in the given HTML/CSS; `ref_prefix` is
   the published folder used to match them. `prune_source` deletes the original
   that a site build copied into the output tree, and `cache` reuses encoded
-  derivatives between builds.
+  derivatives between builds (add that directory to the site's `.gitignore`).
 - `{"favicon": {...}}` runs `favicons.py` (with an optional `trim`), and
   `{"video": {...}}` runs a command array with `{src}` and `{out}`
   placeholders, but only when `--videos` is passed.
+
+### Pattern A: source/ to committed static/
+
+One job per output format, because the treatments differ. Adjust the widths and
+qualities to the site; lukaskrepel.nl and jillestheintern.com publish this way.
+
+```json
+{
+	"jobs": [
+		{
+			"src": "source/images",
+			"out": "static/images",
+			"match": ["**/*.jpg", "**/*.jpeg"],
+			"format": "jpeg",
+			"max_width": 1600,
+			"quality": 80,
+			"progressive": false
+		},
+		{
+			"src": "source/images",
+			"out": "static/images",
+			"match": ["**/*.png"],
+			"format": "png",
+			"max_width": 1600,
+			"only_if_smaller": "copy"
+		},
+		{
+			"src": "source/images",
+			"out": "static/images",
+			"match": ["**/*.gif"],
+			"format": "copy"
+		}
+	]
+}
+```
+
+### Pattern B: rasters to generated dist/
+
+Reference mode converts only files the pages use; the poster job writes srcset
+variants and removes the JPGs the build copied into `dist/`. Run `media.py`
+after the page build and before `cache-bust.py`, so the hashes cover the
+generated files. This is the shape frameorder.nl uses:
+
+```json
+{
+	"cache": ".cache/media",
+	"jobs": [
+		{
+			"src": "static/images",
+			"out": "dist/images",
+			"format": "webp",
+			"refs": ["template.html", "static/styles.css"],
+			"exif_transpose": true
+		},
+		{
+			"src": "static/videos",
+			"out": "dist/videos",
+			"match": ["*.jpg"],
+			"format": "webp",
+			"max_width": 1280,
+			"widths": [480, 760],
+			"quality": 80,
+			"prune_source": true
+		}
+	]
+}
+```
+
+### Renames, favicons, and video
+
+A file `src` with a file `out` renames; favicon and video jobs cover the rest:
+
+```json
+[
+	{
+		"src": "source/logo.png",
+		"out": "static/images/logo.webp",
+		"format": "webp",
+		"trim": true,
+		"max_width": 1000,
+		"quality": 88,
+		"method": 6
+	},
+	{
+		"favicon": {
+			"src": "source/icon.png",
+			"out": "static/favicons",
+			"background": "#ffffff",
+			"trim": true
+		}
+	},
+	{
+		"video": {
+			"src": "source/trailer.mov",
+			"out": "static/videos/trailer.mp4",
+			"command": [
+				"ffmpeg",
+				"-i",
+				"{src}",
+				"-c:v",
+				"libx264",
+				"-crf",
+				"23",
+				"-preset",
+				"slow",
+				"-c:a",
+				"aac",
+				"-movflags",
+				"+faststart",
+				"{out}"
+			]
+		}
+	}
+]
+```
+
+`--videos` is required to run video jobs. On macOS, `avconvert` with
+`Preset1280x720` is the equivalent used by jillestheintern.com.
 
 Manifest paths resolve from the manifest's directory. Without `--force`, an
 output newer than its source is skipped; `--force` remakes everything. A missing
@@ -379,8 +542,10 @@ The default size is 1200×630; `--size 1200x675` keeps a 16:9 artwork intact.
 ## Icons and sharing convention
 
 Every site keeps the inputs and the exact commands in the repository, so the
-icons and share image can be rebuilt at any time. [ASSETS.md](ASSETS.md) lists
-the sizes and formats the sources need:
+icons and share image can be rebuilt at any time. Use one builder per site:
+`scripts/icons.sh` (the default) or, when the site already has a `media.json`,
+a `favicon` job plus a share `jpeg` job. Keeping both is the usual source of
+drift. [ASSETS.md](ASSETS.md) lists the sizes and formats the sources need:
 
 - `source/icon.png` (or `.jpg`) — the favicon artwork, tracked in git.
 - `source/share.png` (or `.jpg`) — the share artwork, tracked in git.
